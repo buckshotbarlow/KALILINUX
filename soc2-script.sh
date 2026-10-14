@@ -23,7 +23,7 @@ RUN_ATTACKS=true                      # Hydra/Responder/CrackMap/Aircrack; toggl
 
 [ "$EUID" -ne 0 ] && { echo "Run as root"; exit 1; }
 
-DATE_DIR="scans/$(date +%Y-%m-%d)/run_$(date +%H%M%S)"
+DATE_DIR="/root/scans/$(date +%Y-%m-%d)/run_$(date +%H%M%S)"   # absolute: ZAP cd's into its own dir
 mkdir -p "$DATE_DIR"
 REPORT="$DATE_DIR/report.html"
 exec > >(tee -a "$DATE_DIR/console.txt") 2>&1
@@ -35,7 +35,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 skip() { echo "[skip] $1 not installed"; echo "<h2>$2</h2><pre>$1 not installed</pre>" >> "$REPORT"; }
 
 # Append a tool's output file as an HTML section
-section() { echo "<h2>$1</h2><pre>$(cat "$2" 2>/dev/null)</pre>" >> "$REPORT"; }
+section() { echo "<h2>$1</h2><pre>$(tr -d '\000' < "$2" 2>/dev/null)</pre>" >> "$REPORT"; }
 
 # ---------------- REPORT HEADER ----------------
 cat > "$REPORT" <<EOF
@@ -79,11 +79,11 @@ run_recon() {
     section "Nikto Web Scan" "$DATE_DIR/nikto.txt"
   else skip nikto "Nikto Web Scan"; fi
 
-  if have zap-cli; then
+  if have zaproxy; then
     echo "OWASP ZAP quick scan..."
-    zap-cli quick-scan --self-contained "$WEB_TARGET" > "$DATE_DIR/zap.txt" 2>&1
-    section "OWASP ZAP" "$DATE_DIR/zap.txt"
-  else skip zap-cli "OWASP ZAP"; fi
+    zaproxy -cmd -quickurl "$WEB_TARGET" -quickout "$DATE_DIR/zap.html" > "$DATE_DIR/zap.txt" 2>&1
+    echo "<h2>OWASP ZAP</h2><p>See <a href='zap.html'>full report</a>.</p>" >> "$REPORT"
+  else skip zaproxy "OWASP ZAP"; fi
 }
 
 # ---------------- ATTACK / CREDENTIAL ----------------
